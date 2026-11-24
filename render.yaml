@@ -1,0 +1,17 @@
+# Render 部署配置
+# 免费版：512MB 内存，15 分钟无流量休眠，唤醒约 1 分钟
+# 注意：免费版无持久磁盘，重启后状态归零（平台已做优雅降级）
+
+services:
+  - type: web
+    name: parcel-station
+    runtime: node
+    plan: free
+    buildCommand: echo "无需构建"
+    startCommand: node server/server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DEVICE_TOKEN
+        generateValue: true

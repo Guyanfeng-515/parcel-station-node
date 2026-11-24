@@ -1,0 +1,202 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>取件小助手 · C 端居民端 | 社区快递驿站</title>
+<link rel="stylesheet" href="assets/base.css">
+</head>
+<body class="theme-c">
+
+<div class="c-wrap">
+
+  <!-- Hero -->
+  <div class="c-hero">
+    <div class="h-top">
+      <span>📍 阳光里社区快递驿站</span>
+      <div class="grow"></div>
+      <span class="c-pill"><span class="sdot" id="heroDot" style="background:#fff"></span><span id="heroOpen">营业中</span></span>
+    </div>
+    <h1 id="greeting">你好呀 👋</h1>
+    <div class="h-sub" id="heroSub">正在读取驿站实时状态…</div>
+
+    <div class="h-live">
+      <span class="h-live-dot"></span>数据实时同步中 · 每 2 秒刷新
+    </div>
+
+    <div class="h-row">
+      <div class="h-stat">
+        <b id="heroParcels">--</b>
+        <span>待取包裹</span>
+      </div>
+      <div class="h-stat">
+        <b id="heroPeople">--</b>
+        <span>当前在店人数</span>
+      </div>
+      <div class="h-stat">
+        <b id="heroWait">--</b>
+        <span>预计等待</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="c-tabs" id="cTabs">
+    <button class="on" data-tab="now">驿站实况</button>
+    <button data-tab="mine">我的包裹</button>
+    <button data-tab="tip">取件贴士</button>
+  </div>
+
+  <!-- ============ TAB 1：驿站实况 ============ -->
+  <div class="view active" id="tab-now">
+
+    <div class="c-card">
+      <h2><span class="ico">🌡️</span>驿站环境实况<span class="right" id="updatedAt">刚刚更新</span></h2>
+      <div class="c-metrics">
+        <div class="c-metric">
+          <div class="m-label">🌡️ 室内温度</div>
+          <div class="m-val" id="mTemp">--<i>℃</i></div>
+        </div>
+        <div class="c-metric">
+          <div class="m-label">💧 室内湿度</div>
+          <div class="m-val" id="mHum">--<i>%</i></div>
+        </div>
+        <div class="c-metric">
+          <div class="m-label">🚶 店内人员</div>
+          <div class="m-val" id="mPeople">--<i>人</i></div>
+        </div>
+        <div class="c-metric">
+          <div class="m-label">☀️ 采光</div>
+          <div class="m-val" id="mLux" style="font-size:17px">--</div>
+        </div>
+      </div>
+
+      <div class="mt12">
+        <div class="row between" style="font-size:12px;margin-bottom:6px">
+          <span class="muted">取件舒适度</span>
+          <span id="comfortTag" style="font-weight:600">—</span>
+        </div>
+        <div class="bar"><i id="comfortBar" style="width:0%"></i></div>
+        <div class="sr mt8" id="comfortNote">—</div>
+      </div>
+    </div>
+
+    <div class="c-card">
+      <h2><span class="ico">🚶</span>现在人多吗<span class="right" id="crowdRight">—</span></h2>
+      <div class="row" style="gap:14px;align-items:center">
+        <div id="crowdDonut"></div>
+        <div class="grow">
+          <div style="font-size:17px;font-weight:700" id="crowdText">—</div>
+          <div class="sr mt8" id="crowdTip">—</div>
+        </div>
+      </div>
+      <div class="mt12">
+        <div class="sr" style="margin-bottom:6px">今日人流分布（越晚越拥挤）</div>
+        <div class="chart-wrap" id="chartCrowd"></div>
+      </div>
+    </div>
+
+    <div class="c-card">
+      <h2><span class="ico">💨</span>驿站正在做什么<span class="right">自动联动</span></h2>
+      <div class="c-list" id="devList"></div>
+      <div class="sr mt8" style="border-top:1px dashed var(--line);padding-top:10px">
+        驿站装有温湿度、光照、人体感应三类传感器，人少或没人时会自动关灯关风扇，既舒适又省电～
+      </div>
+    </div>
+
+    <div class="c-card">
+      <h2><span class="ico">🕒</span>营业时间</h2>
+      <div class="c-list">
+        <div class="c-li"><div class="ci">🌅</div><div class="cg"><b>每日 07:30 – 21:30</b><span>节假日照常营业</span></div><span class="badge ok" id="openBadge">营业中</span></div>
+        <div class="c-li"><div class="ci">📞</div><div class="cg"><b>驿站电话</b><span>021-6688 1234</span></div></div>
+        <div class="c-li"><div class="ci">📦</div><div class="cg"><b>大件包裹</b><span>请从侧门进入，货架在 A 区</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 2：我的包裹 ============ -->
+  <div class="view" id="tab-mine">
+    <div class="c-card">
+      <h2><span class="ico">📦</span>我的包裹<span class="right" id="mineCount">—</span></h2>
+      <div id="myParcels"></div>
+    </div>
+
+    <div class="c-card">
+      <h2><span class="ico">🌡️</span>包裹保存环境<span class="right">实时</span></h2>
+      <div class="row" style="gap:12px;align-items:center">
+        <div style="font-size:30px" id="safeIcon">🌡️</div>
+        <div class="grow">
+          <div style="font-weight:650;font-size:14px" id="safeTitle">—</div>
+          <div class="sr mt8" id="safeNote">—</div>
+        </div>
+      </div>
+      <div class="mt12">
+        <div class="row between sr" style="margin-bottom:6px">
+          <span>安全温度线 30℃</span>
+          <span class="mono" id="safeTemp">-- ℃</span>
+        </div>
+        <div class="bar" id="safeBarWrap"><i id="safeBar" style="width:0%"></i></div>
+      </div>
+      <div class="sr mt12" style="line-height:1.9">
+        驿站承诺：生鲜、巧克力、化妆品等易变质包裹，在库期间温度超过 30℃ 会自动开启排风扇通风，超过 35℃ 立即通知老板处理。
+      </div>
+    </div>
+
+    <div class="c-card">
+      <h2><span class="ico">🔔</span>取件提醒</h2>
+      <div id="cAlerts"></div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 3：取件贴士 ============ -->
+  <div class="view" id="tab-tip">
+    <div class="c-card">
+      <h2><span class="ico">⏰</span>什么时候来最合适</h2>
+      <div class="c-list">
+        <div class="c-li"><div class="ci">🟢</div><div class="cg"><b>09:00 – 11:00</b><span>人最少，几乎不用排队</span></div><span class="badge ok">推荐</span></div>
+        <div class="c-li"><div class="ci">🟡</div><div class="cg"><b>14:00 – 16:30</b><span>人流平缓，随到随取</span></div><span class="badge info">尚可</span></div>
+        <div class="c-li"><div class="ci">🟠</div><div class="cg"><b>11:30 – 13:00</b><span>午间高峰，建议错峰</span></div><span class="badge warn">较挤</span></div>
+        <div class="c-li"><div class="ci">🔴</div><div class="cg"><b>17:00 – 19:30</b><span>下班晚高峰，排队最久</span></div><span class="badge bad">高峰</span></div>
+      </div>
+    </div>
+
+    <div class="c-card">
+      <h2><span class="ico">📋</span>取件须知</h2>
+      <div class="c-list">
+        <div class="c-li"><div class="ci">1️⃣</div><div class="cg"><b>凭取件码自助取件</b><span>在货架按 A-1排 等编号寻找</span></div></div>
+        <div class="c-li"><div class="ci">2️⃣</div><div class="cg"><b>生鲜包裹优先取</b><span>超过 24 小时建议尽快取走</span></div></div>
+        <div class="c-li"><div class="ci">3️⃣</div><div class="cg"><b>包裹有破损当场拍照</b><span>可直接联系驿站或快递员</span></div></div>
+        <div class="c-li"><div class="ci">4️⃣</div><div class="cg"><b>超过 3 天未取将被退回</b><span>请留意取件提醒</span></div></div>
+      </div>
+    </div>
+
+    <div class="c-card">
+      <h2><span class="ico">💚</span>这个驿站有点不一样</h2>
+      <div class="sr" style="line-height:2">
+        这间驿站做了物联网改造：天花板上的人体感应器知道店里有没有人，
+        墙上的温湿度传感器盯着包裹会不会热坏，靠窗的光敏电阻判断自然光够不够亮。<br><br>
+        <b>有人时优先体验，无人时立即节能</b> —— 你取件的时候风扇会转、灯会亮；
+        你走了以后它们会自动休息。一个月的电费，就够把改造钱赚回来啦 (๑•̀ㅂ•́)و✧
+      </div>
+      <div class="mt12 row wrap" style="gap:8px">
+        <span class="badge info">🌡️ DHT11 温湿度</span>
+        <span class="badge info">☀️ 光敏电阻</span>
+        <span class="badge info">🚶 人体红外 PIR</span>
+        <span class="badge info">🧠 ESP32</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="c-foot">
+    阳光里社区快递驿站 · 实时监测平台（C 端居民版）<br>
+    数据每 2 秒同步一次 · <a href="b.html" style="color:var(--accent)">切换到 B 端管理台</a> · <a href="index.html" style="color:var(--muted)">平台入口</a>
+  </div>
+</div>
+
+<div id="toasts"></div>
+
+<script src="assets/client.js"></script>
+<script src="assets/chart.js"></script>
+<script src="assets/c-app.js"></script>
+</body>
+</html>

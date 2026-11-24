@@ -1,0 +1,13 @@
+{
+  "name": "parcel-station-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "社区快递驿站实时监测平台（B/C 双端）",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

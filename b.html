@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>驿站智控 · B 端管理台 | 社区快递驿站实时监测平台</title>
+<link rel="stylesheet" href="assets/base.css">
+</head>
+<body class="theme-b">
+
+<div class="shell">
+  <!-- ============ 左侧导航 ============ -->
+  <aside class="side">
+    <div class="brand">
+      <div class="brand-mark">📦</div>
+      <div class="brand-txt">
+        <b>驿站智控</b>
+        <span>B · 管理端</span>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <div class="nav-item active" data-view="dash"><span class="ico">◉</span>实时总览</div>
+      <div class="nav-item" data-view="control"><span class="ico">⏻</span>远程控制</div>
+      <div class="nav-item" data-view="history"><span class="ico">◫</span>历史数据</div>
+      <div class="nav-item" data-view="alarms"><span class="ico">🔔</span>报警中心<span class="dot" id="navDot">0</span></div>
+      <div class="nav-item" data-view="energy"><span class="ico">⚡</span>节能核算</div>
+      <div class="nav-item" data-view="device"><span class="ico">⚙</span>设备与点位</div>
+    </nav>
+
+    <div class="side-foot">
+      <div class="chip" style="justify-content:center">
+        <span class="pulse" id="sidePulse"></span>
+        <span id="sideConn">WiFi 在线</span>
+      </div>
+      <a class="btn ghost" href="index.html" style="justify-content:center">← 返回平台入口</a>
+      <div class="side-note">
+        社区快递驿站 · 建筑物联网改造<br>
+        感知层 DHT11 / 光敏 / PIR → ESP32 → WiFi → 云端
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ 主区 ============ -->
+  <main class="main">
+
+    <!-- 顶栏 -->
+    <div class="topbar">
+      <div>
+        <h1>阳光里社区快递驿站</h1>
+        <div class="sub">40 ㎡ · 单店改造 · 王婷婷（老板）</div>
+      </div>
+      <div class="grow"></div>
+      <div class="chip" id="connBadge"><span class="pulse"></span>连接中…</div>
+      <div class="chip"><span class="pulse" id="topPulse"></span><span id="topConn">设备在线</span></div>
+      <div class="chip">驿站时间 <b class="mono" id="clock">--:--:--</b></div>
+      <div class="seg" id="speedSeg">
+        <button data-speed="1">1×</button>
+        <button data-speed="20">20×</button>
+        <button data-speed="60" class="on">60×</button>
+        <button data-speed="240">240×</button>
+      </div>
+      <button class="btn primary" id="btnDemo">▶ 一键演示</button>
+      <button class="btn" id="btnOffline">模拟断网</button>
+    </div>
+
+    <!-- 实时数据流条 -->
+    <div class="stream" id="streamBar">
+      <span class="stream-live"><span class="sdot"></span>LIVE</span>
+      <span class="stream-item">SEQ <b class="mono" id="seqVal">0</b></span>
+      <span class="stream-sep">·</span>
+      <span class="stream-item">RSSI <b class="mono" id="rssiVal">-52</b> dBm</span>
+      <span class="stream-sep">·</span>
+      <span class="stream-item">时延 <b class="mono" id="latVal">26</b> ms</span>
+      <span class="stream-sep">·</span>
+      <span class="stream-item">帧 <b class="mono" id="byteVal">140</b> B</span>
+      <span class="stream-sep">·</span>
+      <span class="stream-item">上行 <b class="mono" id="rateVal">1.0</b> 帧/秒</span>
+      <div class="grow"></div>
+      <span class="stream-item" id="demoHint">ESP32 → WiFi → 云端 → 本页</span>
+    </div>
+
+    <!-- 演示进度 -->
+    <div class="banner demo-banner" id="demoBanner" style="display:none">
+      <span class="b-ico">🎬</span>
+      <div class="grow">
+        <b id="demoStepLabel">准备中…</b>
+        <div class="bar" style="margin-top:6px"><i id="demoBar" style="width:0%"></i></div>
+      </div>
+      <span class="mono sr" id="demoCount">0/7</span>
+      <button class="btn sm" id="btnDemoStop">中止</button>
+    </div>
+
+    <!-- 离线横幅 -->
+    <div class="banner" id="offlineBanner" style="display:none">
+      <span class="b-ico">📡</span>
+      <div class="grow"><b>设备离线</b> —— 驿站监测设备已失联（停电或断网），当前无实时数据上行。</div>
+      <button class="btn sm" id="btnReconnect">恢复连接</button>
+    </div>
+
+    <!-- ================= 视图 1：实时总览 ================= -->
+    <section class="view active" id="view-dash">
+
+      <!-- KPI -->
+      <div class="grid g4" style="margin-bottom:14px">
+        <div class="card kpi t-hot">
+          <div class="kpi-top"><div class="kpi-ico">🌡️</div><div class="kpi-label">室内温度</div></div>
+          <div class="kpi-val"><b id="kTemp">--</b><i>℃</i></div>
+          <div class="kpi-foot">
+            <span class="badge" id="tempBadge">—</span>
+            <span class="sr">安全线 <span id="safeLine">30</span>℃</span>
+          </div>
+        </div>
+
+        <div class="card kpi t-cold">
+          <div class="kpi-top"><div class="kpi-ico">💧</div><div class="kpi-label">室内湿度</div></div>
+          <div class="kpi-val"><b id="kHum">--</b><i>%</i></div>
+          <div class="kpi-foot">
+            <span class="badge" id="humBadge">—</span>
+            <span class="sr">纸箱受潮线 75%</span>
+          </div>
+        </div>
+
+        <div class="card kpi t-light">
+          <div class="kpi-top"><div class="kpi-ico">☀️</div><div class="kpi-label">光照强度</div></div>
+          <div class="kpi-val"><b id="kLux">--</b><i>lx</i></div>
+          <div class="kpi-foot">
+            <span class="badge" id="luxBadge">—</span>
+            <span class="sr">照明 <span id="lightState">OFF</span></span>
+          </div>
+        </div>
+
+        <div class="card kpi t-people">
+          <div class="kpi-top"><div class="kpi-ico">🚶</div><div class="kpi-label">店内人员</div></div>
+          <div class="kpi-val"><b id="kPeople">--</b><i>人</i></div>
+          <div class="kpi-foot">
+            <span class="badge" id="peopleBadge">—</span>
+            <span class="sr">今日峰值 <span id="peakPeople">0</span> 人</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 主图 + 右侧 -->
+      <div class="grid g-2-1" style="margin-bottom:14px">
+        <div class="card">
+          <div class="card-h">
+            <h2>温湿度实时曲线</h2>
+            <span class="hint">最近 3 分钟 · 每秒刷新</span>
+            <div class="grow"></div>
+            <div class="legend">
+              <span><i style="background:#ff8a5b"></i>温度 ℃</span>
+              <span><i style="background:#5eb3ff"></i>湿度 %</span>
+            </div>
+          </div>
+          <div class="chart-wrap" id="chartRT"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h2>环境舒适度</h2><div class="grow"></div><span class="badge" id="comfortBadge">—</span></div>
+          <div class="row" style="gap:16px;align-items:center">
+            <div id="donutComfort"></div>
+            <div class="grow">
+              <div class="sr">室内温湿度综合评估</div>
+              <div style="font-size:19px;font-weight:650;margin-top:2px" id="comfortText">—</div>
+              <div class="sr mt8" id="comfortTip">—</div>
+            </div>
+          </div>
+          <div class="mt16">
+            <div class="row between sr" style="margin-bottom:5px"><span>今日温度峰值</span><span class="mono" id="tempPeak">--</span></div>
+            <div class="row between sr" style="margin-bottom:5px"><span>今日温度低值</span><span class="mono" id="tempLow">--</span></div>
+            <div class="row between sr"><span>今日取件人流峰值</span><span class="mono" id="flowPeak">--</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 三卡：联动逻辑 / 今日曲线 / 最近报警 -->
+      <div class="grid g-2-1">
+        <div class="card">
+          <div class="card-h"><h2>今日温湿度趋势</h2><span class="hint">00:00 至今 · 每分钟采样</span></div>
+          <div class="chart-wrap" id="chartToday"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <h2>实时联动状态</h2>
+            <div class="grow"></div>
+            <span class="badge info" id="modeBadge">自动</span>
+          </div>
+
+          <div class="ctrl" data-dev="fan">
+            <div class="ctrl-ico">🌀</div>
+            <div class="ctrl-txt"><b>排风扇</b><span id="fanReason">温度超安全线且有人时自动开启</span></div>
+            <span class="ctrl-state" id="fanState">OFF</span>
+          </div>
+          <div class="ctrl" data-dev="ac">
+            <div class="ctrl-ico">❄️</div>
+            <div class="ctrl-txt"><b>空调</b><span id="acReason">温度超过 32℃ 且有人时自动开启</span></div>
+            <span class="ctrl-state" id="acState">OFF</span>
+          </div>
+          <div class="ctrl" data-dev="light">
+            <div class="ctrl-ico">💡</div>
+            <div class="ctrl-txt"><b>照明</b><span id="lightReason">光线不足且有人时自动开灯，无人自动关灯</span></div>
+            <span class="ctrl-state" id="lightState2">OFF</span>
+          </div>
+          <div class="ctrl">
+            <div class="ctrl-ico">🚪</div>
+            <div class="ctrl-txt"><b>门磁</b><span id="doorReason">—</span></div>
+            <span class="ctrl-state" id="doorState">关</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt16">
+        <div class="card-h"><h2>最近事件</h2><div class="grow"></div><a class="btn sm ghost" href="#" data-goto="alarms">查看全部 →</a></div>
+        <div id="recentEvents"></div>
+      </div>
+    </section>
+
+    <!-- ================= 视图 2：远程控制 ================= -->
+    <section class="view" id="view-control">
+      <div class="grid g-2-1">
+        <div class="card">
+          <div class="card-h">
+            <h2>设备远程控制</h2>
+            <span class="hint">指令经 WiFi 下行至 ESP32 继电器</span>
+            <div class="grow"></div>
+            <button class="btn sm" id="btnAllAuto">全部切自动</button>
+            <button class="btn sm danger" id="btnAllOff">一键全关</button>
+          </div>
+
+          <div id="ctrlList"></div>
+
+          <div class="sr mt12" style="border-top:1px dashed var(--line-soft);padding-top:10px">
+            提示：手动操作后该设备将退出自动联动，需要恢复自动请点「切自动」。
+            老板在外送货时可一键关闭空调与灯光，不必专程返回。
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h2>控制下发日志</h2><div class="grow"></div><span class="hint">指令 → 确认</span></div>
+          <div id="cmdLog"></div>
+        </div>
+      </div>
+
+      <div class="grid g2 mt16">
+        <div class="card">
+          <div class="card-h"><h2>阈值设定</h2><span class="hint">改动立即生效</span></div>
+          <div id="cfgForm"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h2>故障模拟</h2><span class="hint">用于演示预警链路</span></div>
+          <div class="row wrap" style="gap:8px">
+            <button class="btn" id="btnHotDay">☀️ 极端高温日</button>
+            <button class="btn" id="btnDoor">🚪 模拟忘记关门</button>
+            <button class="btn" id="btnOffline2">📡 模拟断网</button>
+            <button class="btn" id="btnPause">⏸ 暂停仿真</button>
+          </div>
+          <div class="sr mt12" style="line-height:1.9">
+            · <b>极端高温日</b>：室外温度整体抬升 3℃，可触发高温报警链路。<br>
+            · <b>忘记关门</b>：无人时段门磁长开超过 5 分钟触发报警。<br>
+            · <b>断网</b>：设备失联，APP 显示离线并推送提醒。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 视图 3：历史数据 ================= -->
+    <section class="view" id="view-history">
+      <div class="card">
+        <div class="card-h">
+          <h2>今日温度曲线</h2>
+          <span class="hint">用于包裹纠纷回溯取证</span>
+          <div class="grow"></div>
+          <span class="badge warn">安全线 30℃</span>
+          <span class="badge bad">报警线 35℃</span>
+        </div>
+        <div class="chart-wrap" id="chartHistTemp"></div>
+      </div>
+
+      <div class="grid g2 mt16">
+        <div class="card">
+          <div class="card-h"><h2>今日湿度曲线</h2></div>
+          <div class="chart-wrap" id="chartHistHum"></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h2>取件人流分布（按小时）</h2><span class="hint">PIR 计数峰值</span></div>
+          <div class="chart-wrap" id="chartFlow"></div>
+          <div class="legend mt12">
+            <span><i style="background:#3ddc97"></i>11:00–13:00 午高峰</span>
+            <span><i style="background:#3ddc97"></i>17:00–19:30 晚高峰</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt16">
+        <div class="card-h"><h2>超温时段明细</h2><div class="grow"></div><span class="hint">温度 &gt; 30℃ 的连续片段</span></div>
+        <div id="overheatTable"></div>
+      </div>
+    </section>
+
+    <!-- ================= 视图 4：报警中心 ================= -->
+    <section class="view" id="view-alarms">
+      <div class="grid g4" style="margin-bottom:14px">
+        <div class="card kpi"><div class="kpi-top"><div class="kpi-ico">🔔</div><div class="kpi-label">未处理</div></div><div class="kpi-val"><b id="aUnacked">0</b><i>条</i></div><div class="kpi-foot">需老板确认</div></div>
+        <div class="card kpi"><div class="kpi-top"><div class="kpi-ico">🔴</div><div class="kpi-label">当前活跃</div></div><div class="kpi-val"><b id="aActive">0</b><i>条</i></div><div class="kpi-foot">正在发生</div></div>
+        <div class="card kpi"><div class="kpi-top"><div class="kpi-ico">📋</div><div class="kpi-label">今日累计</div></div><div class="kpi-val"><b id="aTotal">0</b><i>条</i></div><div class="kpi-foot">含已恢复</div></div>
+        <div class="card kpi"><div class="kpi-top"><div class="kpi-ico">⏱️</div><div class="kpi-label">平均恢复</div></div><div class="kpi-val"><b id="aRecover">--</b><i>分</i></div><div class="kpi-foot">从触发到消除</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <h2>报警记录</h2>
+          <div class="grow"></div>
+          <div class="seg" id="alarmFilter">
+            <button class="on" data-f="all">全部</button>
+            <button data-f="active">活跃</button>
+            <button data-f="high">高危</button>
+          </div>
+          <button class="btn sm" id="btnAckAll">全部标记已读</button>
+        </div>
+        <div id="alarmList"></div>
+      </div>
+
+      <div class="card mt16">
+        <div class="card-h"><h2>预警规则</h2><span class="hint">与 PPT 应用层设计一致</span></div>
+        <table class="tb">
+          <thead><tr><th>规则</th><th>触发条件</th><th>等级</th><th>动作</th></tr></thead>
+          <tbody>
+            <tr><td>高温报警</td><td class="num">温度 &gt; 35℃</td><td><span class="badge bad">高危</span></td><td>APP 弹窗「包裹有变质风险」，建议远程开排风扇 / 空调</td></tr>
+            <tr><td>接近安全线</td><td class="num">温度 &gt; 30℃</td><td><span class="badge warn">中危</span></td><td>自动开启排风扇（有人时）</td></tr>
+            <tr><td>湿度过高</td><td class="num">湿度 &gt; 75%</td><td><span class="badge warn">中危</span></td><td>提示除湿，避免纸箱受潮</td></tr>
+            <tr><td>设备失联</td><td>停电 / 断网</td><td><span class="badge bad">高危</span></td><td>APP 显示「设备离线」，提示到店检查</td></tr>
+            <tr><td>忘记关门</td><td class="num">无人 + 门磁长开 &gt; 5 分钟</td><td><span class="badge warn">中危</span></td><td>推送提醒，防包裹丢失</td></tr>
+            <tr><td>夜间未关设备</td><td>打烊后仍有设备开启</td><td><span class="badge info">低危</span></td><td>提示关闭，避免无谓电费</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ================= 视图 5：节能核算 ================= -->
+    <section class="view" id="view-energy">
+      <div class="grid g4" style="margin-bottom:14px">
+        <div class="card kpi"><div class="kpi-top"><div class="kpi-ico">⚡</div><div class="kpi-label">今日节电</div></div><div class="kpi-val"><b id="eSaved">0.00</b><i>度</i></div><div class="kpi-foot">相比传统常开做法</div></div>
+        <div class="card kpi"><div class="kpi-top"><div class="kpi-ico">💰</div><div class="kpi-label">今日省下</div></div><div class="kpi-val"><b id="eMoney">0.00</b><i>元</i></div><div class="kpi-foot">电价 0.62 元/度</div></div>
+        <div class="card kpi"><div class="kpi-top"><div class="kpi-ico">📉</div><div class="kpi-label">节能率</div></div><div class="kpi-val"><b id="eRate">0</b><i>%</i></div><div class="kpi-foot">占传统做法总耗电</div></div>
+        <div class="card kpi"><div class="kpi-top"><div class="kpi-ico">⏳</div><div class="kpi-label">回本周期</div></div><div class="kpi-val"><b id="ePayback">--</b><i>天</i></div><div class="kpi-foot">改造成本 66 元</div></div>
+      </div>
+
+      <div class="grid g-2-1">
+        <div class="card">
+          <div class="card-h"><h2>传统做法 vs 本方案 · 累计耗电</h2><span class="hint">今日 00:00 起</span></div>
+          <div class="row" style="gap:22px;align-items:flex-end;margin-bottom:14px">
+            <div>
+              <div class="sr">传统常开做法</div>
+              <div class="mono" style="font-size:26px;font-weight:650;color:var(--muted)" id="eBase">0.00 <span style="font-size:12px">度</span></div>
+            </div>
+            <div>
+              <div class="sr">本方案实际</div>
+              <div class="mono" style="font-size:26px;font-weight:650;color:var(--accent)" id="eUsed">0.00 <span style="font-size:12px">度</span></div>
+            </div>
+          </div>
+          <div class="bar" style="height:10px"><i id="eBarUsed" style="width:0%"></i></div>
+          <div class="row between sr mt8"><span id="eBarLabel">—</span><span>100%</span></div>
+
+          <div class="mt16">
+            <div class="chart-wrap" id="chartEnergy"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h2>设备耗电构成</h2><span class="hint">今日累计</span></div>
+          <div class="row" style="gap:18px;align-items:center">
+            <div id="donutEnergy"></div>
+            <div class="grow" id="energyLegend"></div>
+          </div>
+          <div class="sr mt16" style="border-top:1px dashed var(--line-soft);padding-top:10px;line-height:1.9">
+            核算口径：照明 180W / 排风扇 60W / 空调 1.5 匹 1200W，电价 0.62 元/度。
+            传统做法按「灯从早亮到晚、排风扇整个营业时段常开」估算；空调属舒适性设备，单列不计入节省。
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt16">
+        <div class="card-h"><h2>成本与可行性</h2><span class="hint">PPT 第 10 页核算表</span></div>
+        <div class="grid g2">
+          <table class="tb">
+            <thead><tr><th>设备 / 材料</th><th>数量</th><th>金额</th></tr></thead>
+            <tbody>
+              <tr><td>DHT11 温湿度传感器</td><td class="num">1 个</td><td class="num">5 元</td></tr>
+              <tr><td>光敏电阻传感器</td><td class="num">1 个</td><td class="num">3 元</td></tr>
+              <tr><td>人体红外 PIR 传感器</td><td class="num">1 个</td><td class="num">8 元</td></tr>
+              <tr><td>ESP32 主控板</td><td class="num">1 块</td><td class="num">20 元</td></tr>
+              <tr><td>继电器模块</td><td class="num">1 个</td><td class="num">10 元</td></tr>
+              <tr><td>电源、外壳、线材</td><td class="num">1 套</td><td class="num">20 元</td></tr>
+              <tr style="font-weight:650"><td>合计（单间驿站）</td><td class="num">—</td><td class="num" style="color:var(--accent)">66 元</td></tr>
+            </tbody>
+          </table>
+          <div>
+            <div class="row between sr" style="margin-bottom:6px"><span>累计节省电费（今日）</span><span class="mono" id="eMoney2">0.00 元</span></div>
+            <div class="row between sr" style="margin-bottom:6px"><span>按今日推算月度节省</span><span class="mono" id="eMonthly">0.00 元</span></div>
+            <div class="row between sr" style="margin-bottom:12px"><span>改造成本回收</span><span class="mono" id="ePayback2">--</span></div>
+            <div class="bar"><i id="ePayBar" style="width:0%"></i></div>
+            <div class="sr mt8" id="ePayTip">—</div>
+            <div class="sr mt16" style="line-height:1.9">
+              ✅ 实施条件：驿站内已有 WiFi · 排风扇与照明接入继电器控制回路 · 需懂基础电路接线的安装人员。<br>
+              🔧 依托现有 WiFi 即插即用，无需破墙施工，半天内可完成安装调试。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= 视图 6：设备与点位 ================= -->
+    <section class="view" id="view-device">
+      <div class="card">
+        <div class="card-h"><h2>感知层设备清单</h2><span class="hint">三类传感器覆盖四类数据</span></div>
+        <table class="tb">
+          <thead><tr><th>采集数据</th><th>传感器型号</th><th>输出方式</th><th>安装位置</th><th>状态</th><th>单价</th></tr></thead>
+          <tbody>
+            <tr><td>🌡️ 温湿度</td><td>DHT11 温湿度一体</td><td>数字信号</td><td>中部墙面，距地约 1.5 m</td><td><span class="badge ok" data-live-badge="dht">在线</span></td><td class="num">约 5 元</td></tr>
+            <tr><td>☀️ 光照</td><td>光敏电阻传感器</td><td>模拟量</td><td>靠窗位置，朝向窗外</td><td><span class="badge ok" data-live-badge="lux">在线</span></td><td class="num">约 3 元</td></tr>
+            <tr><td>🚶 人员活动</td><td>人体红外 PIR</td><td>热释电红外</td><td>天花板正中 / 门内侧上方</td><td><span class="badge ok" data-live-badge="pir">在线</span></td><td class="num">约 8 元</td></tr>
+            <tr><td>🧠 主控</td><td>ESP32</td><td>自带 WiFi 模块</td><td>收银台电脑旁</td><td><span class="badge ok" data-live-badge="esp">在线</span></td><td class="num">约 20 元</td></tr>
+            <tr><td>🔌 执行</td><td>继电器模块</td><td>开关量输出</td><td>排风扇 / 空调 / 照明回路</td><td><span class="badge ok" data-live-badge="relay">在线</span></td><td class="num">约 10 元</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid g-2-1 mt16">
+        <div class="card">
+          <div class="card-h"><h2>40 ㎡ 驿站平面布点示意</h2><span class="hint">点位与实际布点图对应</span></div>
+          <div id="floorplan"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h2>网络层链路</h2></div>
+          <div id="netChain"></div>
+          <div class="sr mt16" style="border-top:1px dashed var(--line-soft);padding-top:10px;line-height:1.9">
+            📶 WiFi 直连：复用驿站原有连接电脑与扫码枪的 WiFi，ESP32 直接接入无线路由器，不新增网线、不破墙。<br>
+            ☁️ 云端存储：历史温湿度曲线可回溯，为包裹纠纷提供数据依据。
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt16">
+        <div class="card-h"><h2>应用层联动逻辑</h2><span class="hint">两条联动：温度通风 + 照明</span></div>
+        <div class="grid g2" id="logicCards"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="toasts"></div>
+
+<script src="assets/client.js"></script>
+<script src="assets/chart.js"></script>
+<script src="assets/b-app.js"></script>
+</body>
+</html>
